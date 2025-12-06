@@ -17,7 +17,7 @@ export const signup = async (req: any, res: any) => {
         const queryRes = await client.query(`INSERT INTO users(name, email, password) VALUES($1, $2, $3);`, [name, email, hassedPassword])
         console.log('squeryRes-', queryRes)
         const { data, error } = await resend.emails.send({
-            from: 'mdtalha9434@gmail.com',
+            from: 'onboarding@resend.dev',
             to: email,
             subject: 'Signup Success!',
             html: '<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="http://localhost:3000/login">login</a>'
