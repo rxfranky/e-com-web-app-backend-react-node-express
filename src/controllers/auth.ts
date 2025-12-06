@@ -2,9 +2,18 @@ import { genSaltSync, hashSync, compareSync } from 'bcrypt'
 import { client } from '../index.js'
 import jwt from 'jsonwebtoken'
 import type { Request, Response } from 'express';
-import { Resend } from 'resend'
+import * as Brevo from '@getbrevo/brevo'
 
-const resend = new Resend(process.env.RESENDAPI)
+
+const apiInstance = new Brevo.TransactionalEmailsApi()
+apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY!)
+const sendSmtpEmail = new Brevo.SendSmtpEmail()
+
+sendSmtpEmail.sender = {
+    email: process.env.BREVO_EMAIL!,
+    name:process.env.BREVO_NAME!
+}
+
 
 export const signup = async (req: any, res: any) => {
     const email = req.body.email;
@@ -14,15 +23,13 @@ export const signup = async (req: any, res: any) => {
     const hassedPassword = hashSync(password, 15)
 
     try {
-        const queryRes = await client.query(`INSERT INTO users(name, email, password) VALUES($1, $2, $3);`, [name, email, hassedPassword])
-        console.log('squeryRes-', queryRes)
-        const { data, error } = await resend.emails.send({
-            from: 'onboarding@resend.dev',
-            to: email,
-            subject: 'Signup Success!',
-            html: '<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="http://localhost:3000/login">login</a>'
-        })
-        console.log('de-', data || error)
+        await client.query(`INSERT INTO users(name, email, password) VALUES($1, $2, $3);`, [name, email, hassedPassword])
+        
+        sendSmtpEmail.to=[{email}]
+        sendSmtpEmail.subject='Signup Success!'
+        sendSmtpEmail.htmlContent='<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="http://localhost:3000/login">login</a>'
+        await apiInstance.sendTransacEmail(sendSmtpEmail)
+
         res.status(201).json({ signedUp: true, msg: 'signup success!' })
     } catch (err: any) {
         console.log('err-', err.message)
