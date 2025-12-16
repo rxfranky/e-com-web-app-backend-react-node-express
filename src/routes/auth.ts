@@ -2,10 +2,8 @@ import express from 'express'
 
 import { body, validationResult } from 'express-validator'
 
-import { signup } from "../controllers/auth.js";
-import { login } from '../controllers/auth.js';
 import { isAuth } from '../util/isAuthenticated.js';
-import { changePassword } from '../controllers/auth.js';
+import { changePassword, signup, login, postResetPassword, newPassword } from '../controllers/auth.js';
 
 const router = express.Router()
 
@@ -45,6 +43,17 @@ router.post('/resetPassword', body('email').notEmpty().bail().withMessage('Pleas
         return res.json({ invalidInputs: true, valiErrors: result.array() })
     }
     next()
-})
+}, postResetPassword)
+
+
+router.post('/newPassword', body('newPassword').notEmpty().bail().withMessage('Please enter new password').isLength({min:4, max:18}).withMessage('New Password must between 4 to 18 chars!'), body('newConfirmPassword').custom((val, {req})=>{
+    return val===req.body.newPassword
+}).withMessage('Password and confirm-password must same!'), (req, res, next)=>{
+    const result=validationResult(req)
+    if(!result.isEmpty()) {
+        return res.json({invalidInputs:true, valiErrors:result.array()})
+    }
+    next()
+}, newPassword)
 
 export default router;
