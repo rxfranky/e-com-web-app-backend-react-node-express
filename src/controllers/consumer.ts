@@ -171,7 +171,7 @@ export async function checkout(req: any, res: Response) {
                 ],
                 mode: "payment",
                 allow_promotion_codes: true,
-                success_url: `http://localhost:3000/consumer/saveOrder${queryParam}&orderId={CHECKOUT_SESSION_ID}`
+                success_url: `https://e-com-practice-backend.onrender.com/consumer/saveOrder${queryParam}&orderId={CHECKOUT_SESSION_ID}`
             }
         )
         return res.status(200).json({ checkoutPage: session.url, msg: 'Checkout session created' })
