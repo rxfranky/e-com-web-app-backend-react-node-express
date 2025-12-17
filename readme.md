@@ -2,6 +2,9 @@
 
 A full-stack **E-Commerce Web Application** built with **Node.js, Express, and React**, featuring secure authentication, payments, email notifications, invoice generation, and a modern UI.
 
+[Backend Repo](https://github.com/rxfranky/e-com-web-app-backend-react-node-express)
+[Deployed Link](https://e-com-web-app-frontend-node-react-e.vercel.app/)
+
 ---
 
 ## 🚀 Tech Stack
@@ -38,8 +41,4 @@ A full-stack **E-Commerce Web Application** built with **Node.js, Express, and R
 - ⚡ Optimized data fetching with **TanStack Query**
 - 🎨 Smooth UI animations with **Motion.dev**
 - 📱 Fully responsive UI (Tailwind CSS)
-
----
-
-## 📂 Project Structure
 
