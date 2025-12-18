@@ -21,11 +21,11 @@ export async function fetchProducts(req: any, res: Response, next: any) {
 
     let skip = 0
     if (page > 1) {
-        skip = (page - 1) * 3
+        skip = (page - 1) * 4
     }
 
     let query = `SELECT * FROM products OFFSET $1 LIMIT $2;`
-    let params = [skip, 3]
+    let params = [skip, 4]
     let query_2 = `SELECT COUNT(*) FROM products;`
     let params_2: any = []
 
