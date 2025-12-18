@@ -104,7 +104,7 @@ export async function postResetPassword(req: Request, res: Response) {
             await client.query(`UPDATE users SET password_reset_token=$1, reset_token_exp=$2 WHERE email=$3;`, [token, tokenExp, email])
             sendSmtpEmail.to = [{ email }]
             sendSmtpEmail.subject = 'Reset Password'
-            sendSmtpEmail.htmlContent = `<span>Reset your password-</span><a href='http://localhost:5173/login/newPassword/?token=${token}'>reset here</a>`
+            sendSmtpEmail.htmlContent = `<span>Reset your password-</span><a href='https://e-com-web-app-frontend-node-react-e.vercel.app/login/newPassword/?token=${token}'>reset here</a>`
             await apiInstance.sendTransacEmail(sendSmtpEmail)
             return res.json({ sentEmail: true, msg: 'Email sent for reset password' })
         } catch (err: any) {

@@ -91,6 +91,8 @@ web_modules/
 .next
 out
 
+invoices
+
 # Nuxt.js build / generate output
 .nuxt
 dist
