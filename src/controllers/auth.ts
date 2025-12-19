@@ -26,7 +26,7 @@ export const signup = async (req: any, res: any) => {
 
         sendSmtpEmail.to = [{ email }]
         sendSmtpEmail.subject = 'Signup Success!'
-        sendSmtpEmail.htmlContent = '<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="https://e-com-practice-backend.onrender.com/login">login</a>'
+        sendSmtpEmail.htmlContent = '<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="https://e-com-web-app-frontend-node-react-e.vercel.app/login">login</a>'
         await apiInstance.sendTransacEmail(sendSmtpEmail)
 
         res.status(201).json({ signedUp: true, msg: 'signup success!' })

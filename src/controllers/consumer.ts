@@ -5,7 +5,6 @@ import PDFDocument from 'pdfkit'
 import fs from 'node:fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import blobStream from 'blob-stream'
 
 
 const _filename = fileURLToPath(import.meta.url)
@@ -39,7 +38,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         JOIN users ON users.id=products.creator
         WHERE email=$3
         OFFSET $1 LIMIT $2;`
-        params = [skip, 3, email]
+        params = [skip, 4, email]
 
         query_2 = `SELECT COUNT(*) FROM products
         JOIN users ON users.id=products.creator
@@ -51,7 +50,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         const queryRes = await client.query(query_2, params_2)
         const totalProducts = +queryRes.rows[0].count
         let isLastPage = false;
-        if (totalProducts <= (page * 3)) {
+        if (totalProducts <= (page * 4)) {
             isLastPage = true
         }
         const { rows } = await client.query(query, params)
@@ -322,7 +321,8 @@ export async function downloadInvoice(req: Request, res: Response) {
             .fontSize(14).fillColor('#000')
             .text(`$${netAmount.toFixed(2)}`, 420, y)
 
-        doc.end()
+        doc.end();
+        return;
         // stream.on('finish', () => {
         //     const url = stream.toBlobURL('application/pdf')
         // })

@@ -1,7 +1,7 @@
 import * as express from 'express'
 import type { Router } from 'express'
 import { isAuth } from '../util/isAuthenticated.js'
-import { body, check, validationResult } from 'express-validator'
+import { body, validationResult } from 'express-validator'
 import multer from 'multer'
 
 import { addProduct, deleteProduct } from '../controllers/admin.js'

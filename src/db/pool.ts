@@ -7,13 +7,3 @@ const pool = new Pool(
 )
 
 export default pool;
-
-
-
-
-
-// host: 'localhost',
-//     port: 5432,
-//     user: 'postgres',
-//     password: 'mypass',
-//     database: 'e-com-practice'
