@@ -55,7 +55,7 @@ export async function login(req: any, res: any) {
         if (isPasswordMatch) {
             const jwtKey = process.env.JWT_KEY!
             const token = jwt.sign({ email: loginData.email }, jwtKey, { expiresIn: '2h' })
-            return res.status(200).json({ msg: 'Login Success!', authToken: token, email: loginData.email })
+            return res.status(200).json({ msg: 'Login Success!', authToken: token, email: loginData.email, name: queryRes.rows[0].name })
         } else {
             res.json({ msg: 'Incorrect password entered!' })
         }

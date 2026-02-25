@@ -20,11 +20,11 @@ export async function fetchProducts(req: any, res: Response, next: any) {
 
     let skip = 0
     if (page > 1) {
-        skip = (page - 1) * 4
+        skip = (page - 1) * 8
     }
 
     let query = `SELECT * FROM products OFFSET $1 LIMIT $2;`
-    let params = [skip, 4]
+    let params = [skip, 8]
     let query_2 = `SELECT COUNT(*) FROM products;`
     let params_2: any = []
 
@@ -38,7 +38,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         JOIN users ON users.id=products.creator
         WHERE email=$3
         OFFSET $1 LIMIT $2;`
-        params = [skip, 4, email]
+        params = [skip, 8, email]
 
         query_2 = `SELECT COUNT(*) FROM products
         JOIN users ON users.id=products.creator
@@ -46,11 +46,17 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         params_2 = [email]
     }
 
+    if (isAdmin.toLowerCase().trim() === 'false' && !page) {
+        query = `
+        SELECT * FROM products;`
+        params = []
+    }
+
     try {
         const queryRes = await client.query(query_2, params_2)
         const totalProducts = +queryRes.rows[0].count
         let isLastPage = false;
-        if (totalProducts <= (page * 4)) {
+        if (totalProducts <= (page * 8)) {
             isLastPage = true
         }
         const { rows } = await client.query(query, params)
