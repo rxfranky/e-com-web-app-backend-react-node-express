@@ -1,6 +1,6 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import cloudnary from 'cloudinary'
-import { client } from '../index.js'
+import prisma from "../lib/prisma.js";
 
 cloudnary.v2.config(
     {
@@ -29,19 +29,44 @@ export async function addProduct(req: any, res: Response) {
         })
 
         if (product_id) {
-            const queryRes = await client.query(`SELECT image_id FROM products WHERE id=$1;`, [product_id])
-            await client.query(`
-                UPDATE products
-                SET title=$1, price=$2, image_src=$3, image_id=$4
-                WHERE id=$5;
-                `, [title, price, uploadResult.url, uploadResult.public_id, product_id]
-            )
-            await cloudnary.v2.uploader.destroy(queryRes.rows[0].image_id)
+            const queryRes = await prisma.products.findUniqueOrThrow({
+                select: {
+                    image_id: true
+                },
+                where: {
+                    id: product_id
+                }
+            })
+
+            await prisma.products.update({
+                data: {
+                    title,
+                    price,
+                    image_src: uploadResult.url,
+                    image_id: uploadResult.public_id
+                },
+                where: {
+                    id: product_id
+                }
+            })
+            await cloudnary.v2.uploader.destroy(queryRes.image_id)
             return res.status(200).json({ productEdited: true, msg: 'Product edited success!' })
         }
 
-        const { rows } = await client.query(`SELECT id from users WHERE email=$1;`, [email])
-        await client.query(`INSERT INTO products(title, price, image_src, creator, image_id) VALUES($1, $2, $3, $4, $5);`, [title, price, uploadResult.url, rows[0].id, uploadResult.public_id])
+        const queryRes2 = await prisma.users.findUniqueOrThrow({
+            select: { id: true },
+            where: { email }
+        })
+
+        await prisma.products.create({
+            data: {
+                title,
+                price,
+                image_src: uploadResult.url,
+                creator: queryRes2.id,
+                image_id: uploadResult.public_id
+            }
+        })
         return res.status(200).json({ productAdded: true, msg: 'Product added success!' })
     } catch (err) {
         console.log('err in quering or uploading-', err)
@@ -53,9 +78,21 @@ export async function deleteProduct(req: any, res: Response) {
     const product_id = +req.params.id
 
     try {
-        const { rows } = await client.query(`SELECT image_id FROM products WHERE id=$1;`, [product_id])
-        await cloudnary.v2.uploader.destroy(rows[0].image_id)
-        await client.query(`DELETE FROM products WHERE id=$1;`, [product_id])
+        const queryRes = await prisma.products.findUniqueOrThrow({
+            select: {
+                image_id: true
+            },
+            where: {
+                id: product_id
+            }
+        })
+
+        await cloudnary.v2.uploader.destroy(queryRes.image_id)
+        await prisma.products.delete({
+            where: {
+                id: product_id
+            }
+        })
         return res.status(200).json({ productDeleted: true, msg: 'Product deleted success!' })
     } catch (err) {
         console.log('err in quering or deleting from cloudn-', err)

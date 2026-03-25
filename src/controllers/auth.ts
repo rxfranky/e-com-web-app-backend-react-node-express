@@ -1,5 +1,5 @@
 import { genSaltSync, hashSync, compareSync } from 'bcrypt'
-import { client } from '../index.js'
+import prisma from '../lib/prisma.js';
 import jwt from 'jsonwebtoken'
 import type { Request, Response } from 'express';
 import * as Brevo from '@getbrevo/brevo'
@@ -22,14 +22,20 @@ export const signup = async (req: any, res: any) => {
 
     const hassedPassword = hashSync(password, 15)
     try {
-        await client.query(`INSERT INTO users(name, email, password) VALUES($1, $2, $3);`, [name, email, hassedPassword])
+        await prisma.users.create({
+            data: {
+                name,
+                email,
+                password: hassedPassword
+            }
+        })
 
         sendSmtpEmail.to = [{ email }]
         sendSmtpEmail.subject = 'Signup Success!'
         sendSmtpEmail.htmlContent = '<p>Signup success! Lets login to explore more.</p> <span>Login link-</span><a href="https://e-com-web-app-frontend-node-react-e.vercel.app/login">login</a>'
         await apiInstance.sendTransacEmail(sendSmtpEmail)
 
-        res.status(201).json({ signedUp: true, msg: 'signup success!' })
+        return res.status(201).json({ signedUp: true, msg: 'Signup success!' })
     } catch (err: any) {
         console.log('err-', err.message)
         if (err.message.trim().toLowerCase().includes('unique constraint')) {
@@ -47,15 +53,23 @@ export async function login(req: any, res: any) {
         return res.status(500).json({ msg: 'Already logged in!' })
     }
 
-    const queryRes = await client.query(`SELECT * FROM users WHERE email=$1;`, [loginData.email])
-    if (queryRes.rowCount === 0) {
+    const queryRes = await prisma.users.findUnique({
+        select: {
+            name: true,
+            password: true
+        },
+        where: {
+            email: loginData.email
+        }
+    })
+    if (queryRes === null) {
         return res.json({ msg: 'Signup first!' })
     } else {
-        const isPasswordMatch = compareSync(loginData.password, queryRes.rows[0].password)
+        const isPasswordMatch = compareSync(loginData.password, queryRes.password)
         if (isPasswordMatch) {
             const jwtKey = process.env.JWT_KEY!
             const token = jwt.sign({ email: loginData.email }, jwtKey, { expiresIn: '2h' })
-            return res.status(200).json({ msg: 'Login Success!', authToken: token, email: loginData.email, name: queryRes.rows[0].name })
+            return res.status(200).json({ msg: 'Login Success!', authToken: token, email: loginData.email, name: queryRes.name })
         } else {
             res.json({ msg: 'Incorrect password entered!' })
         }
@@ -73,13 +87,27 @@ export const changePassword = async (req: any, res: any) => {
     const salt = genSaltSync(15)
     const hassedNewPassword = hashSync(newPassword, salt)
     try {
-        const queryRes = await client.query(`SELECT password, email FROM users WHERE email=$1;`, [email])
-        if (queryRes.rowCount === 0) {
+        const queryRes = await prisma.users.findUnique({
+            select: {
+                password: true
+            },
+            where: {
+                email
+            }
+        })
+        if (queryRes === null) {
             return res.json({ notSignedUp: true, msg: 'Signup first!' })
         } else {
-            const isPasswordMatch = compareSync(oldPassword, queryRes.rows[0].password)
+            const isPasswordMatch = compareSync(oldPassword, queryRes.password)
             if (isPasswordMatch) {
-                await client.query(`UPDATE users SET password=$1 WHERE email=$2;`, [hassedNewPassword, email])
+                await prisma.users.update({
+                    data: {
+                        password: hassedNewPassword
+                    },
+                    where: {
+                        email
+                    }
+                })
                 return res.json({ passwordChanged: true, msg: 'Password changed success!' })
             } else {
                 return res.json({ wrongOldPassword: true, msg: 'Incorrect old password!' })
@@ -93,23 +121,39 @@ export const changePassword = async (req: any, res: any) => {
 
 export async function postResetPassword(req: Request, res: Response) {
     const email = req.body.email;
-    const queryRes = await client.query(`SELECT email FROM users WHERE email=$1;`, [email])
-    if (queryRes.rowCount === 0) {
+
+    const queryRes = await prisma.users.findUnique({
+        select: {
+            email: true
+        },
+        where: {
+            email
+        }
+    })
+    if (queryRes === null) {
         return res.json({ notSignedUp: true, msg: 'Signup first!' })
     } else {
         const token = crypto.randomBytes(20).toString('hex')
         const tokenExp = new Date()
         tokenExp.setHours(tokenExp.getHours() + 2)
         try {
-            await client.query(`UPDATE users SET password_reset_token=$1, reset_token_exp=$2 WHERE email=$3;`, [token, tokenExp, email])
+            await prisma.users.update({
+                data: {
+                    password_reset_token: token,
+                    reset_token_exp: tokenExp
+                },
+                where: {
+                    email
+                }
+            })
             sendSmtpEmail.to = [{ email }]
             sendSmtpEmail.subject = 'Reset Password'
             sendSmtpEmail.htmlContent = `<span>Reset your password-</span><a href='https://e-com-web-app-frontend-node-react-e.vercel.app/login/newPassword/?token=${token}'>reset here</a>`
             await apiInstance.sendTransacEmail(sendSmtpEmail)
-            return res.json({ sentEmail: true, msg: 'Email sent for reset password' })
+            return res.json({ sentEmail: true, msg: 'Email sent for reset password!' })
         } catch (err: any) {
             console.log('err-', err.message)
-            return res.status(500).json({ msg: 'some problem related to database or email' })
+            return res.status(500).json({ msg: 'some problem related to database or email!' })
         }
     }
 }
@@ -120,19 +164,33 @@ export async function newPassword(req: Request, res: Response) {
     const resetToken = req.body.resetToken
 
     const hassedNewPassword = hashSync(newPassword, 15)
-
     try {
-        const queryRes = await client.query(`SELECT password, reset_token_exp FROM users WHERE password_reset_token=$1;`, [resetToken])
+        const queryRes = await prisma.users.findUnique({
+            select: {
+                reset_token_exp: true
+            },
+            where: {
+                password_reset_token: resetToken
+            }
+        })
 
-        if (queryRes.rowCount === 0) {
-            return res.status(500).json({ msg: 'Invalid password reset token' })
+        if (queryRes === null) {
+            return res.status(500).json({ msg: 'Invalid password reset token!' })
         }
-        const tokenExp = queryRes.rows[0].reset_token_exp
         const now = new Date()
-        if (tokenExp < now) {
-            return res.json({ tokenExpired: true, msg: 'Token has expired! Reset Again!' })
+        if (queryRes.reset_token_exp! < now) {
+            return res.json({ tokenExpired: true, msg: 'Token has expired, Reset again!' })
         } else {
-            await client.query(`UPDATE users SET password=$1, password_reset_token=$3, reset_token_exp=$4 WHERE password_reset_token=$2;`, [hassedNewPassword, resetToken, null, null])
+            await prisma.users.update({
+                data: {
+                    password: hassedNewPassword,
+                    password_reset_token: null,
+                    reset_token_exp: null
+                },
+                where: {
+                    password_reset_token: resetToken
+                }
+            })
             return res.json({ newPassword: true, msg: 'Password reset success!' })
         }
     } catch (err: any) {

@@ -20,6 +20,7 @@ A full-stack **E-Commerce Web Application** built with **Node.js, Express, and R
 - **Node.js**
 - **Express.js**
 - **PostgreSQL** - As Database
+- **Prisma** - As ORM
 - **JWT (JSON Web Token)** – authentication & authorization
 - **Express-Validator** – input validation
 - **Stripe** – payment integration
