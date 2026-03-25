@@ -8,7 +8,7 @@ import consumerRoutes from './routes/consumer.js'
 
 const app: Express = express()
 
-app.use(cors({ origin: 'http://localhost:5173' }))
+app.use(cors({ origin: 'https://e-com-web-app-frontend-node-react-e.vercel.app' }))
 
 app.use(express.json())
 
