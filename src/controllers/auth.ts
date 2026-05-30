@@ -116,24 +116,22 @@ export const signup = async (req: any, res: any) => {
 }
 
 export async function login(req: any, res: any) {
-    const authToken = req.headers.authtoken.split(' ')[1]
-    const oAuthToken = req.headers.oauthtoken.split(' ')[1]
+    const authToken = req.headers.authtoken?.split(' ')[1]
+    const oAuthToken = req.headers.oauthtoken?.split(' ')[1]
     const loginData = req.body;
 
-    let isValidAuthToken = true;
     try {
-        jwt.verify(authToken, process.env.JWT_KEY!)
-    } catch (err: any) {
-        isValidAuthToken = false
-        console.log('jwt err-', err.message)
-    }
+        const queryRes = await prisma.authState.findUnique({
+            where: {
+                token: authToken
+            }
+        })
 
-    if (isValidAuthToken || oAuthToken.trim().toLowerCase() !== 'undefined'
-    ) {
-        return res.status(200).json({ isAlreadyLoggedIn: true, msg: 'Already logged in!' })
-    }
+        if (queryRes || oAuthToken?.trim().toLowerCase() !== 'undefined'
+        ) {
+            return res.status(200).json({ isAlreadyLoggedIn: true, msg: 'Already logged in!' })
+        }
 
-    try {
         const queryRes2 = await prisma.account.findFirst({
             where: {
                 user: {
@@ -287,7 +285,7 @@ export async function postResetPassword(req: Request, res: Response) {
             })
             sendSmtpEmail.to = [{ email }]
             sendSmtpEmail.subject = 'Reset Password'
-           sendSmtpEmail.htmlContent = `
+            sendSmtpEmail.htmlContent = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center;">
 
     <h1 style="color: rgb(14, 52, 90); margin-bottom: 16px;">
@@ -389,7 +387,7 @@ export async function newPassword(req: Request, res: Response) {
 export async function getAuthState(req: any, res: Response) {
     const authToken = req.headers.authorization.toString().split(' ')[1];
 
-    if (authToken.trim().toLowerCase() === 'null') {
+    if (!authToken || authToken.trim().toLowerCase() === 'null') {
         return res.status(200).json({ isLoggedIn: false })
     }
 
@@ -415,6 +413,9 @@ export async function getAuthState(req: any, res: Response) {
         }
     })
 
+    if (!queryRes) {
+        return res.status(200).json({ isLoggedIn: false })
+    }
     return res.status(200).json({ isLoggedIn: true, userData: queryRes?.user })
 }
 
@@ -422,15 +423,22 @@ export async function getAuthState(req: any, res: Response) {
 export async function logout(req: any, res: Response) {
     const authToken = req.headers.authorization.split(' ')[1];
 
-    if (authToken.trim().toLowerCase() == 'null') {
+    if (!authToken || authToken.trim().toLowerCase() === 'null') {
         return res.status(400).json({ isLoggedIn: false })
     }
 
-    await prisma.authState.delete({
-        where: {
-            token: authToken
+    try {
+        await prisma.authState.delete({
+            where: {
+                token: authToken
+            }
+        })
+        return res.status(200).json({ logoutSuccess: true })
+    } catch (err: any) {
+        console.log('err in quering for logout- ', err.message)
+        if (err.message.trim().toLowerCase().includes('no record was found')) {
+            return res.status(200).json({ logoutSuccess: true })
         }
-    })
-
-    return res.status(200).json({ logoutSuccess: true })
+        return res.status(500).json({ msg: 'err related to db!' })
+    }
 }

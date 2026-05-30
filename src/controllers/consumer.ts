@@ -3,7 +3,6 @@ import prisma from "../lib/prisma.js";
 import stripe from 'stripe'
 import PDFDocument from 'pdfkit'
 import { sendSmtpEmail, apiInstance } from './auth.js'
-import e from "express";
 
 
 const stripeIns = new stripe(process.env.STRIPE_API!)

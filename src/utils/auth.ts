@@ -11,6 +11,12 @@ export const auth = betterAuth({
     trustedOrigins: [
         "https://e-com-web-app-frontend-node-react-e.vercel.app"
     ],
+    advanced: {
+        defaultCookieAttributes: {
+            sameSite: "none",
+            secure: true
+        }
+    },
     socialProviders: {
         github: {
             clientId: process.env.GITHUB_CLIENT_ID!,
@@ -36,7 +42,6 @@ export const auth = betterAuth({
                 type: 'date',
                 required: false
             }
-        },
-        skipStateCookieCheck: true
+        }
     }
 });
