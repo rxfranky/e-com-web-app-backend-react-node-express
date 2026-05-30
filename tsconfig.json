@@ -28,7 +28,7 @@
     "noUnusedParameters": false,
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
-    // "noEmit": true,
+    "noEmit": false,
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",

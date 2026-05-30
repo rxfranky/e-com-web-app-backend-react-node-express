@@ -15,13 +15,15 @@ A full-stack **E-Commerce Web Application** built with **Node.js, Express, and R
 - **TanStack Query (React Query)** – server state & caching
 - **Tailwind CSS** – utility-first styling
 - **Motion.dev** – animations & transitions
+- **Shadcn** – For Spinners
 
 ### 🔹 Backend
 - **Node.js**
 - **Express.js**
-- **PostgreSQL** - As Database
+- **PostgreSQL(Supabase)** - As Database
 - **Prisma** - As ORM
 - **JWT (JSON Web Token)** – authentication & authorization
+- **Better-Auth** – For oAuth 2.0
 - **Express-Validator** – input validation
 - **Stripe** – payment integration
 - **Brevo (Sendinblue)** – email management

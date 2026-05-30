@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import stripe from 'stripe'
 import PDFDocument from 'pdfkit'
+import { sendSmtpEmail, apiInstance } from './auth.js'
+import e from "express";
 
 
 const stripeIns = new stripe(process.env.STRIPE_API!)
@@ -9,7 +11,26 @@ const stripeIns = new stripe(process.env.STRIPE_API!)
 export async function fetchProducts(req: any, res: Response, next: any) {
     const page = +req.query.page!;
     const isAdmin: any = req.query.isAdmin!
-    const email = req.decodedToken ? req.decodedToken.email : null
+    const oAuthToken = req.oAuthToken
+    let email;
+
+    if (oAuthToken) {
+        const queryRes = await prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        })
+        email = queryRes?.user.email
+    } else {
+        email = req.decodedToken?.email
+    }
 
     let skip = 0
     if (page > 1) {
@@ -22,7 +43,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
     }
     let query_2: any = ''
 
-    if (isAdmin.toLowerCase().trim() === 'true' && !req.decodedToken) {
+    if (isAdmin.toLowerCase().trim() === 'true' && !req.decodedToken && !oAuthToken) {
         return next()
     }
 
@@ -37,7 +58,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
             skip,
             take: 8,
             where: {
-                users: {
+                user: {
                     email
                 }
             }
@@ -45,7 +66,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
 
         query_2 = {
             where: {
-                users: {
+                user: {
                     email
                 }
             }
@@ -71,11 +92,30 @@ export async function fetchProducts(req: any, res: Response, next: any) {
 }
 
 export async function addToCart(req: any, res: Response) {
-    const id = +req.params.id;
-    const email = req.decodedToken.email!
+    const productId = +req.params.productId;
+    const oAuthToken = req.oAuthToken;
+    let email;
+
+    if (req.oAuthToken) {
+        const queryRes = await prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        })
+        email = queryRes?.user.email
+    } else {
+        email = req.decodedToken.email
+    }
 
     try {
-        const queryRes = await prisma.users.findUniqueOrThrow({
+        const queryRes = await prisma.user.findUniqueOrThrow({
             select: {
                 id: true
             },
@@ -89,34 +129,31 @@ export async function addToCart(req: any, res: Response) {
                 quantity: true
             },
             where: {
-                product: id,
+                product: productId,
                 consumer: queryRes.id
             }
         })
 
-        if (queryRes2 === null) {
+        if (!queryRes2) {
             await prisma.cart.create({
                 data: {
-                    product: id,
+                    product: productId,
                     consumer: queryRes.id
                 }
             })
             return res.status(200).json({ addedToCart: true, msg: 'Added in cart success!' })
-        } else {
-            const updatedQuantity = queryRes2.quantity + 1;
-            await prisma.cart.updateMany({
-                data: {
-                    quantity: updatedQuantity
-                },
-                where: {
-                    AND: [
-                        { consumer: queryRes.id },
-                        { product: id }
-                    ]
-                }
-            })
-            return res.status(200).json({ quantityInc: true, msg: 'Quantity increased success!' })
         }
+        const updatedQuantity = queryRes2.quantity + 1;
+        await prisma.cart.updateMany({
+            data: {
+                quantity: updatedQuantity
+            },
+            where: {
+                consumer: queryRes.id,
+                product: productId
+            }
+        })
+        return res.status(200).json({ quantityInc: true, msg: 'Quantity increased success!' })
     } catch (err) {
         console.log('err in quering-', err)
         return res.status(500).json({ msg: 'err related to database' })
@@ -124,7 +161,25 @@ export async function addToCart(req: any, res: Response) {
 }
 
 export async function fetchCart(req: any, res: Response) {
-    const email = req.decodedToken.email;
+    const oAuthToken = req.oAuthToken
+    let email;
+
+    if (oAuthToken) {
+        const queryRes = await prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        })
+        email = queryRes?.user.email
+    }
+    email = req.decodedToken.email;
 
     try {
         const queryRes = await prisma.cart.findMany({
@@ -142,15 +197,14 @@ export async function fetchCart(req: any, res: Response) {
                 }
             },
             where: {
-                users: {
+                user: {
                     email
                 }
             }
         })
-
         if (queryRes.length === 0) {
             return res.status(200).json({ cartIsEmpty: true, msg: 'Cart is Empty!' })
-        } ``
+        }
         return res.status(200).json({ cart: queryRes })
     } catch (err) {
         console.log('err in quering-', err)
@@ -164,7 +218,6 @@ export async function quantityControl(req: Request, res: Response) {
 
     try {
         if (action === 'dec') {
-            // await client.query(`UPDATE cart SET quantity=GREATEST(quantity-$1, $3) WHERE id=$2;`, [1, id, 1])
             await prisma.cart.update({
                 data: {
                     quantity: {
@@ -188,7 +241,7 @@ export async function quantityControl(req: Request, res: Response) {
                     id
                 }
             })
-            return res.json({ quanInc: true, msg: 'Quantity increased success!' })
+            return res.status(200).json({ quanInc: true, msg: 'Quantity increased success!' })
         }
         if (action === 'delete') {
             await prisma.cart.delete({
@@ -196,17 +249,37 @@ export async function quantityControl(req: Request, res: Response) {
                     id
                 }
             })
-            return res.json({ deleted: true, msg: 'Deleted from cart success!' })
+            return res.status(200).json({ deleted: true, msg: 'Deleted from cart success!' })
         }
     } catch (err) {
         console.log('err in quering-', err)
+        return res.status(500).json({ msg: "err related to database" })
     }
 }
 
 export async function checkout(req: any, res: Response) {
     const cart = req.body.cart;
     const product = req.body.product;
-    const email = req.decodedToken.email
+    const oAuthToken = req.oAuthToken
+    let email;
+
+    if (oAuthToken) {
+        const queryRes = await prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        })
+        email = queryRes?.user.email
+    } else {
+        email = req.decodedToken.email
+    }
 
     let queryParam = `?cart=${JSON.stringify(cart)}`
     let price = 0
@@ -287,7 +360,7 @@ export async function saveOrder(
             })
         }
         if (parsedProduct && email) {
-            const queryRes = await prisma.users.findUnique({
+            const queryRes = await prisma.user.findUnique({
                 where: {
                     email
                 },
@@ -312,13 +385,32 @@ export async function saveOrder(
 }
 
 export async function fetchOrders(req: any, res: Response) {
-    const email = req.decodedToken.email;
+    let email;
+    const oAuthToken = req.oAuthToken
+
+    if (oAuthToken) {
+        const queryRes = await prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        })
+        email = queryRes?.user.email
+    } else {
+        email = req.decodedToken.email;
+    }
 
     try {
         const queryRes = await prisma.orders.groupBy({
             by: ['order_id'],
             where: {
-                users: {
+                user: {
                     email
                 }
             },
@@ -341,7 +433,7 @@ export async function downloadInvoice(req: Request, res: Response) {
         const queryRes = await prisma.orders.findMany({
             select: {
                 quantity: true,
-                users: {
+                user: {
                     select: {
                         name: true,
                         email: true
@@ -376,8 +468,8 @@ export async function downloadInvoice(req: Request, res: Response) {
             .text('Price', 320, tableTop)
             .text('Total', 420, tableTop)
 
-        doc.fontSize(10).text(`Customer: ${queryRes[0]?.users.name}`, 50, 100)
-            .text(`Email: ${queryRes[0]?.users.email}`, 50, 115)
+        doc.fontSize(10).text(`Customer: ${queryRes[0]?.user.name}`, 50, 100)
+            .text(`Email: ${queryRes[0]?.user.email}`, 50, 115)
         // Line under header
         doc.moveTo(50, tableTop + 20)
             .lineTo(500, tableTop + 20)
@@ -411,6 +503,29 @@ export async function downloadInvoice(req: Request, res: Response) {
         return;
     } catch (err) {
         console.log('err in quering-', err)
-        res.status(500).json({ msg: 'err related to database' })
+        return res.status(500).json({ msg: 'err related to database' })
+    }
+}
+
+export async function subscribe(req: Request, res: Response) {
+    const email = req.body.email;
+    try {
+        await prisma.subscribers.create({
+            data: {
+                email
+            }
+        })
+        sendSmtpEmail.to = [{ email }]
+        sendSmtpEmail.subject = 'Subscribed to E-com-project'
+        sendSmtpEmail.htmlContent = '<p>Thanks for Subscribbing us! Welcome.</p>'
+        await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        return res.status(200).json({ subscribed: true })
+    } catch (err: any) {
+        console.log('err in creating subscriber-', err.message)
+        if (err.message.trim().toLowerCase().includes('unique constraint')) {
+            return res.status(500).json({ msg: 'already subscribed to this email!' })
+        }
+        return res.status(500).json({ msg: 'err related to database or email!' })
     }
 }

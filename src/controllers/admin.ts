@@ -13,8 +13,26 @@ cloudnary.v2.config(
 export async function addProduct(req: any, res: Response) {
     const title = req.body.title;
     const price = +req.body.price;
-    const email = req.decodedToken.email;
-    const product_id = +req.query.product_id
+    let email;
+    const productId = +req.query.product_id
+    const oAuthToken = req.oAuthToken
+
+    if (oAuthToken) {
+        prisma.session.findUnique({
+            where: {
+                token: oAuthToken
+            },
+            select: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                }
+            }
+        }).then((res) => { email = res?.user.email }).catch((err) => { console.log('err in quering- ', err) })
+    } else {
+        email = req.decodedToken?.email;
+    }
 
     try {
         const uploadResult: any = await new Promise((resolve, reject) => {
@@ -28,13 +46,13 @@ export async function addProduct(req: any, res: Response) {
             }).end(req.file?.buffer)
         })
 
-        if (product_id) {
+        if (productId) {
             const queryRes = await prisma.products.findUniqueOrThrow({
                 select: {
                     image_id: true
                 },
                 where: {
-                    id: product_id
+                    id: productId
                 }
             })
 
@@ -46,14 +64,14 @@ export async function addProduct(req: any, res: Response) {
                     image_id: uploadResult.public_id
                 },
                 where: {
-                    id: product_id
+                    id: productId
                 }
             })
             await cloudnary.v2.uploader.destroy(queryRes.image_id)
             return res.status(200).json({ productEdited: true, msg: 'Product edited success!' })
         }
 
-        const queryRes2 = await prisma.users.findUniqueOrThrow({
+        const queryRes2 = await prisma.user.findUniqueOrThrow({
             select: { id: true },
             where: { email }
         })
@@ -75,7 +93,7 @@ export async function addProduct(req: any, res: Response) {
 }
 
 export async function deleteProduct(req: any, res: Response) {
-    const product_id = +req.params.id
+    const productId = +req.params.id
 
     try {
         const queryRes = await prisma.products.findUniqueOrThrow({
@@ -83,14 +101,14 @@ export async function deleteProduct(req: any, res: Response) {
                 image_id: true
             },
             where: {
-                id: product_id
+                id: productId
             }
         })
 
         await cloudnary.v2.uploader.destroy(queryRes.image_id)
         await prisma.products.delete({
             where: {
-                id: product_id
+                id: productId
             }
         })
         return res.status(200).json({ productDeleted: true, msg: 'Product deleted success!' })
