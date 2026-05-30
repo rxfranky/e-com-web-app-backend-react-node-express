@@ -12,10 +12,6 @@ export const auth = betterAuth({
         "https://e-com-web-app-frontend-node-react-e.vercel.app"
     ],
     socialProviders: {
-        facebook: {
-            clientId: process.env.FACEBOOK_CLIENT_ID!,
-            clientSecret: process.env.FACEBOOK_CLIENT_SECRET!
-        },
         github: {
             clientId: process.env.GITHUB_CLIENT_ID!,
             clientSecret: process.env.GITHUB_CLIENT_SECRET!,
@@ -40,6 +36,7 @@ export const auth = betterAuth({
                 type: 'date',
                 required: false
             }
-        }
+        },
+        skipStateCookieCheck: true
     }
 });
