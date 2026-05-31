@@ -177,8 +177,9 @@ export async function fetchCart(req: any, res: Response) {
             }
         })
         email = queryRes?.user.email
+    } else {
+        email = req.decodedToken.email;
     }
-    email = req.decodedToken.email;
 
     try {
         const queryRes = await prisma.cart.findMany({

@@ -385,7 +385,7 @@ export async function newPassword(req: Request, res: Response) {
 
 
 export async function getAuthState(req: any, res: Response) {
-    const authToken = req.headers.authorization.toString().split(' ')[1];
+    const authToken = req.headers.authorization?.toString().split(' ')[1];
 
     if (!authToken || authToken.trim().toLowerCase() === 'null') {
         return res.status(200).json({ isLoggedIn: false })
@@ -421,7 +421,7 @@ export async function getAuthState(req: any, res: Response) {
 
 
 export async function logout(req: any, res: Response) {
-    const authToken = req.headers.authorization.split(' ')[1];
+    const authToken = req.headers.authorization?.split(' ')[1];
 
     if (!authToken || authToken.trim().toLowerCase() === 'null') {
         return res.status(400).json({ isLoggedIn: false })
