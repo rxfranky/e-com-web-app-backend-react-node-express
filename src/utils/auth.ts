@@ -9,7 +9,7 @@ export const auth = betterAuth({
     }),
     baseURL: process.env.BETTER_AUTH_URL!,
     trustedOrigins: [
-        "https://e-com-web-app-frontend-node-react-e.vercel.app"
+        process.env.FRONTEND_URL!
     ],
     advanced: {
         defaultCookieAttributes: {

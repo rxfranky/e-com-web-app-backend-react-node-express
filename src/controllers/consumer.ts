@@ -51,6 +51,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
             select: {
                 id: true,
                 title: true,
+                description: true,
                 image_src: true,
                 price: true
             },
@@ -92,6 +93,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
 
 export async function addToCart(req: any, res: Response) {
     const productId = +req.params.productId;
+    const quantity = req.query.quantity;
     const oAuthToken = req.oAuthToken;
     let email;
 
@@ -137,12 +139,13 @@ export async function addToCart(req: any, res: Response) {
             await prisma.cart.create({
                 data: {
                     product: productId,
-                    consumer: queryRes.id
+                    consumer: queryRes.id,
+                    quantity:quantity!=='null'?+quantity:1
                 }
             })
             return res.status(200).json({ addedToCart: true, msg: 'Added in cart success!' })
         }
-        const updatedQuantity = queryRes2.quantity + 1;
+        const updatedQuantity = queryRes2.quantity + (quantity!=='null'?+quantity:1);
         await prisma.cart.updateMany({
             data: {
                 quantity: updatedQuantity
@@ -261,6 +264,7 @@ export async function checkout(req: any, res: Response) {
     const cart = req.body.cart;
     const product = req.body.product;
     const oAuthToken = req.oAuthToken
+    const data = req.body.data
     let email;
 
     if (oAuthToken) {
@@ -281,13 +285,19 @@ export async function checkout(req: any, res: Response) {
         email = req.decodedToken.email
     }
 
-    let queryParam = `?cart=${JSON.stringify(cart)}`
+    let queryParam;
     let price = 0
 
     if (cart) {
         cart.forEach((element: any) => {
             price = price + ((+element.products.price) * element.quantity)
         });
+        queryParam = `?cart=${JSON.stringify(cart)}`
+    }
+
+    if (data) {
+        price = +data.price * data.quantity
+        queryParam = `?data=${JSON.stringify(data)}&email=${email}`
     }
 
     if (product) {
@@ -312,7 +322,7 @@ export async function checkout(req: any, res: Response) {
                 ],
                 mode: "payment",
                 allow_promotion_codes: true,
-                success_url: `https://e-com-practice-backend.onrender.com/consumer/saveOrder${queryParam}&orderId={CHECKOUT_SESSION_ID}`
+                success_url: `${process.env.BACKEND_URL}/consumer/saveOrder${queryParam}&orderId={CHECKOUT_SESSION_ID}`
             }
         )
         return res.status(200).json({ checkoutPage: session.url, msg: 'Checkout session created' })
@@ -327,6 +337,7 @@ export async function saveOrder(
         orderId: string;
         cart?: any;
         product?: any;
+        data?: any;
         email?: string
     }>,
     res: Response
@@ -338,6 +349,9 @@ export async function saveOrder(
 
     const product: any = req.query.product
     const parsedProduct = product ? JSON.parse(product) : null
+
+    const data: any = req.query.data;
+    const parsedData = data ? JSON.parse(data) : null
 
     const email = req.query.email
 
@@ -359,7 +373,7 @@ export async function saveOrder(
                 }
             })
         }
-        if (parsedProduct && email) {
+        if ((parsedProduct || parsedData) && email) {
             const queryRes = await prisma.user.findUnique({
                 where: {
                     email
@@ -370,14 +384,14 @@ export async function saveOrder(
             })
             await prisma.orders.create({
                 data: {
-                    product: parsedProduct.id,
-                    quantity: 1,
+                    product: parsedData ? +parsedData.productId : parsedProduct.id,
+                    quantity: parsedData ? parsedData.quantity : 1,
                     order_id: orderId,
                     consumer: queryRes?.id!
                 }
             })
         }
-        return res.status(302).redirect('https://e-com-web-app-frontend-node-react-e.vercel.app/orders')
+        return res.status(302).redirect(`${process.env.FRONTEND_URL}/orders`)
     } catch (err) {
         console.log('err in quering-', err)
         res.status(500).json({ msg: 'err related to database' })
@@ -527,5 +541,23 @@ export async function subscribe(req: Request, res: Response) {
             return res.status(500).json({ msg: 'already subscribed to this email!' })
         }
         return res.status(500).json({ msg: 'err related to database or email!' })
+    }
+}
+
+export async function getSearchedProduct(req: Request, res: Response) {
+    const { searchText } = req.query;
+    const refinedSearchedText = searchText?.toString().trim().toLowerCase()
+
+    try {
+        const products = await prisma.products.findMany()
+        const searchedProducts = products.filter(product => product.title.trim().toLowerCase().includes(refinedSearchedText!))
+
+        if (searchedProducts.length !== 0) {
+            return res.status(200).json({ getProducts: true, products: searchedProducts })
+        }
+        return res.status(200).json({ getProducts: false, msg: 'Product not found!' })
+    } catch (err: any) {
+        console.log('err in searching prod- ', err.message)
+        return res.status(500).json({ msg: 'error related to database!' })
     }
 }

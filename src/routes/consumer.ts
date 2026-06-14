@@ -10,10 +10,11 @@ import {
     saveOrder,
     fetchOrders,
     downloadInvoice,
-    subscribe
+    subscribe,
+    getSearchedProduct
 } from '../controllers/consumer.js'
 import { isAuth } from '../utils/isAuthenticated.js'
-import { body, validationResult } from 'express-validator'
+import { body, validationResult, query } from 'express-validator'
 
 const router: Router = express.Router()
 
@@ -44,5 +45,13 @@ router.post('/subscribe',
     },
     subscribe
 )
+
+router.get('/getSearchedProduct', query('searchText').notEmpty().bail().withMessage('Search field is empty!'), (req: Request, res: Response, next: NextFunction) => {
+    const valiRes = validationResult(req)
+    if (!valiRes.isEmpty()) {
+        return res.json({ invalidInputs: true, valiErrors: valiRes.array() })
+    }
+    next();
+}, getSearchedProduct)
 
 export default router;

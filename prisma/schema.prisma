@@ -29,15 +29,16 @@ model Orders {
 }
 
 model Products {
-  id        Int      @id @default(autoincrement())
-  title     String   @db.VarChar(30)
-  price     Decimal  @db.Decimal(10, 2)
-  image_src String   @db.VarChar(200)
-  creator   String
-  image_id  String   @db.VarChar(99)
-  cart      Cart[]
-  orders    Orders[]
-  user      User     @relation(fields: [creator], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(30)
+  price       Decimal  @db.Decimal(10, 2)
+  image_src   String   @db.VarChar(200)
+  creator     String
+  image_id    String   @db.VarChar(99)
+  description String   @db.VarChar(300)
+  cart        Cart[]
+  orders      Orders[]
+  user        User     @relation(fields: [creator], references: [id], onDelete: Cascade)
 }
 
 model Subscribers {

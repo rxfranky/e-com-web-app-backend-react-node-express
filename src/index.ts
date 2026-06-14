@@ -16,14 +16,14 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "https://e-com-practice-backend.onrender.com"],
+        connectSrc: ["'self'", process.env.BACKEND_URL!],
       },
     },
   })
 );
 
 app.use(cors({
-  origin: 'https://e-com-web-app-frontend-node-react-e.vercel.app',
+  origin: process.env.FRONTEND_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 }))

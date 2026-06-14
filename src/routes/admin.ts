@@ -25,8 +25,8 @@ const upload = multer(
 router.post('/addProduct',
     upload.single('image'),
     body('title').notEmpty().bail().withMessage('Please enter title!'),
-    body('description').notEmpty().bail().withMessage('Please enter description'),
-    body('price').notEmpty().bail().withMessage('Please enter price')
+    body('description').notEmpty().bail().withMessage('Please enter description!').isLength({ max: 300 }).bail().withMessage('Max description length must be 300 chars!'),
+    body('price').notEmpty().bail().withMessage('Please enter price!')
         .custom((val) => { return +val > 0 })
         .withMessage('Price must be greater than 0'),
     (req, res, next) => {

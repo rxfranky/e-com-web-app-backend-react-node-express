@@ -13,6 +13,7 @@ cloudnary.v2.config(
 export async function addProduct(req: any, res: Response) {
     const title = req.body.title;
     const price = +req.body.price;
+    const desc = req.body.description
     let email;
     const productId = +req.query.product_id
     const oAuthToken = req.oAuthToken
@@ -60,6 +61,7 @@ export async function addProduct(req: any, res: Response) {
                 data: {
                     title,
                     price,
+                    description:desc,
                     image_src: uploadResult.url,
                     image_id: uploadResult.public_id
                 },
@@ -80,6 +82,7 @@ export async function addProduct(req: any, res: Response) {
             data: {
                 title,
                 price,
+                description: desc,
                 image_src: uploadResult.url,
                 creator: queryRes2.id,
                 image_id: uploadResult.public_id
