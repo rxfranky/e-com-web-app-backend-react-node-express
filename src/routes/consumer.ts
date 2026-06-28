@@ -11,7 +11,10 @@ import {
     fetchOrders,
     downloadInvoice,
     subscribe,
-    getSearchedProduct
+    getSearchedProduct,
+    addToWishlist,
+    isInWishlist,
+    getWishlist
 } from '../controllers/consumer.js'
 import { isAuth } from '../utils/isAuthenticated.js'
 import { body, validationResult, query } from 'express-validator'
@@ -53,5 +56,11 @@ router.get('/getSearchedProduct', query('searchText').notEmpty().bail().withMess
     }
     next();
 }, getSearchedProduct)
+
+router.post('/addToWishlist/:productId', isAuth, addToWishlist)
+
+router.get('/isInWishlist/:productId', isAuth, isInWishlist)
+
+router.get('/getWishlist', isAuth, getWishlist)
 
 export default router;

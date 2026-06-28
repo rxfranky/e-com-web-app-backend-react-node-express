@@ -8,8 +8,8 @@ import { sendSmtpEmail, apiInstance } from './auth.js'
 const stripeIns = new stripe(process.env.STRIPE_API!)
 
 export async function fetchProducts(req: any, res: Response, next: any) {
-    const page = +req.query.page!;
-    const isAdmin: any = req.query.isAdmin!
+    const page = +req.query.page;
+    const isAdmin = req.query.isAdmin
     const oAuthToken = req.oAuthToken
     let email;
 
@@ -140,12 +140,12 @@ export async function addToCart(req: any, res: Response) {
                 data: {
                     product: productId,
                     consumer: queryRes.id,
-                    quantity:quantity!=='null'?+quantity:1
+                    quantity: quantity !== 'null' ? +quantity : 1
                 }
             })
             return res.status(200).json({ addedToCart: true, msg: 'Added in cart success!' })
         }
-        const updatedQuantity = queryRes2.quantity + (quantity!=='null'?+quantity:1);
+        const updatedQuantity = queryRes2.quantity + (quantity !== 'null' ? +quantity : 1);
         await prisma.cart.updateMany({
             data: {
                 quantity: updatedQuantity
@@ -559,5 +559,178 @@ export async function getSearchedProduct(req: Request, res: Response) {
     } catch (err: any) {
         console.log('err in searching prod- ', err.message)
         return res.status(500).json({ msg: 'error related to database!' })
+    }
+}
+
+export async function addToWishlist(req: any, res: any) {
+    const { productId } = req.params
+    const { action } = req.query;
+    const oAuthToken = req.oAuthToken;
+    const email = req.decodedToken.email;
+
+    let userId: string;
+    try {
+        if (oAuthToken) {
+            const queryRes = await prisma.session.findFirst({
+                select: {
+                    user: {
+                        select: {
+                            id: true
+                        }
+                    }
+                },
+                where: {
+                    token: oAuthToken
+                }
+            })
+            userId = queryRes?.user.id!
+
+        } else {
+            const queryRes2 = await prisma.authState.findFirst({
+                select: {
+                    user: {
+                        select: {
+                            id: true
+                        }
+                    }
+                },
+                where: {
+                    user: {
+                        email
+                    }
+                }
+            })
+            userId = queryRes2?.user.id!
+        }
+        if (action.trim().toLowerCase().includes('remove')) {
+            await prisma.wishlist.deleteMany({
+                where: {
+                    productId: +productId,
+                    userId
+                }
+            })
+            return res.status(200).json({ removed: true })
+        } else {
+            await prisma.wishlist.create({
+                data: {
+                    productId: +productId,
+                    userId
+                }
+            })
+            return res.status(200).json({ added: true })
+        }
+    }
+    catch (err: any) {
+        console.log('err came in query or inserting in db- ', err.message)
+        return res.status(500).json({ msg: 'err related to database!' })
+    }
+}
+
+export async function isInWishlist(req: any, res: any) {
+    const { productId } = req.params;
+    const oAuthToken = req.oAuthToken;
+    let email;
+
+    try {
+        if (oAuthToken) {
+            const queryRes2 = await prisma.session.findFirst({
+                select: {
+                    user: {
+                        select: {
+                            email: true
+                        }
+                    }
+                },
+                where: {
+                    token: oAuthToken
+                }
+            })
+            email = queryRes2?.user.email;
+        } else {
+            email = req.decodedToken.email;
+        }
+        const queryRes = await prisma.wishlist.findFirst({
+            where: {
+                productId: +productId,
+                user: {
+                    email
+                }
+            }
+        })
+        if (queryRes) {
+            return res.status(200).json({ inWishlist: true })
+        } else {
+            return res.status(200).json({ inWishlist: false })
+        }
+    } catch (err) {
+        console.log('err came in quering for isInWishlist- ', err)
+        return res.status(500).json({ msg: 'err related to db!' })
+    }
+}
+
+export async function getWishlist(req: any, res: Response) {
+    const page = +req.query.page;
+    const oAuthToken = req.oAuthToken;
+    let email;
+
+    try {
+        if (oAuthToken) {
+            const queryRes = await prisma.session.findFirst({
+                select: {
+                    user: {
+                        select: {
+                            email: true
+                        }
+                    }
+                },
+                where: {
+                    token: oAuthToken
+                }
+            })
+            email = queryRes?.user.email;
+        } else {
+            email = req.decodedToken.email;
+        }
+
+        let skip = 0
+        if (page > 1) {
+            skip = (page - 1) * 8
+        }
+
+        const queryRes2 = await prisma.wishlist.findMany({
+            where: {
+                user: {
+                    email
+                }
+            },
+            select: {
+                product: {
+                    select: {
+                        id: true,
+                        title: true,
+                        price: true,
+                        description: true,
+                        image_src: true
+                    }
+                }
+            },
+            take: 8,
+            skip
+        })
+        let isLastPage = false
+        const count = await prisma.wishlist.count({
+            where: {
+                user: {
+                    email
+                }
+            }
+        })
+        if (count <= page * 8) {
+            isLastPage = true
+        }
+        return res.status(200).json({ products: queryRes2, isLastPage })
+    } catch (err) {
+        console.log('err came in quering wishlist table- ', err)
+        return res.status(500).json({ msg: 'err related to db!' })
     }
 }

@@ -29,16 +29,17 @@ model Orders {
 }
 
 model Products {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(30)
-  price       Decimal  @db.Decimal(10, 2)
-  image_src   String   @db.VarChar(200)
+  id          Int        @id @default(autoincrement())
+  title       String     @db.VarChar(30)
+  price       Decimal    @db.Decimal(10, 2)
+  image_src   String     @db.VarChar(200)
   creator     String
-  image_id    String   @db.VarChar(99)
-  description String   @db.VarChar(300)
+  image_id    String     @db.VarChar(99)
+  description String     @db.VarChar(300)
   cart        Cart[]
   orders      Orders[]
-  user        User     @relation(fields: [creator], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [creator], references: [id], onDelete: Cascade)
+  wishlist    Wishlist[]
 }
 
 model Subscribers {
@@ -60,6 +61,7 @@ model User {
   cart          Cart[]
   orders        Orders[]
   authState     AuthState[]
+  wishlist      Wishlist[]
 
   @@unique([email])
   @@map("user")
@@ -122,4 +124,14 @@ model AuthState {
   createdAt DateTime @default(now())
   updateAt  DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  userId    String
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Products @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
