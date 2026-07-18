@@ -73,7 +73,7 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         }
     }
 
-    if (isAdmin.toLowerCase().trim() === 'false' && !page) {
+    if (isAdmin.toLowerCase().trim() === 'undefined' && !page) {
         query = ''
     }
 
@@ -140,12 +140,13 @@ export async function addToCart(req: any, res: Response) {
                 data: {
                     product: productId,
                     consumer: queryRes.id,
-                    quantity: quantity !== 'null' ? +quantity : 1
+                    quantity: quantity !== 'undefined' ? +quantity : 1
                 }
+
             })
             return res.status(200).json({ addedToCart: true, msg: 'Added in cart success!' })
         }
-        const updatedQuantity = queryRes2.quantity + (quantity !== 'null' ? +quantity : 1);
+        const updatedQuantity = queryRes2.quantity + (quantity !== 'undefined' ? +quantity : 1);
         await prisma.cart.updateMany({
             data: {
                 quantity: updatedQuantity
@@ -566,7 +567,6 @@ export async function addToWishlist(req: any, res: any) {
     const { productId } = req.params
     const { action } = req.query;
     const oAuthToken = req.oAuthToken;
-    const email = req.decodedToken.email;
 
     let userId: string;
     try {
@@ -596,7 +596,7 @@ export async function addToWishlist(req: any, res: any) {
                 },
                 where: {
                     user: {
-                        email
+                        email: req.decodedToken.email
                     }
                 }
             })
