@@ -19,7 +19,7 @@ export async function addProduct(req: any, res: Response) {
     const oAuthToken = req.oAuthToken
 
     if (oAuthToken) {
-        prisma.session.findUnique({
+        const queryRes3 = await prisma.session.findUnique({
             where: {
                 token: oAuthToken
             },
@@ -30,7 +30,8 @@ export async function addProduct(req: any, res: Response) {
                     }
                 }
             }
-        }).then((res) => { email = res?.user.email }).catch((err) => { console.log('err in quering- ', err) })
+        })
+        email = queryRes3?.user.email;
     } else {
         email = req.decodedToken?.email;
     }
@@ -61,7 +62,7 @@ export async function addProduct(req: any, res: Response) {
                 data: {
                     title,
                     price,
-                    description:desc,
+                    description: desc,
                     image_src: uploadResult.url,
                     image_id: uploadResult.public_id
                 },

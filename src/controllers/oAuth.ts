@@ -5,7 +5,7 @@ import prisma from '../lib/prisma.js'
 export default async function isAlreadyLoggedIn(req: any, res: Response, next: NextFunction) {
     const authToken = req.headers.authtoken?.toString().split(' ')[1]
     const oAuthToken = req.headers.oauthtoken?.toString().split(' ')[1]
-    
+
     if (req.url === '/api/auth/get-session') {
         return next()
     }
