@@ -20,6 +20,10 @@ export default async function isAlreadyLoggedIn(req: any, res: Response, next: N
         }
     })
 
+    if (req.url === '/api/auth/sign-out') {
+        return next()
+    }
+
     if (queryRes || (oAuthToken !== 'undefined' && req.url === '/api/auth/sign-in/social')) {
         return res.status(400).json({ msg: 'Already logged in!' })
     }

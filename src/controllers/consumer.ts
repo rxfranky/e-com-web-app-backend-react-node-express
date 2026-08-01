@@ -8,15 +8,20 @@ import { sendSmtpEmail, apiInstance } from './auth.js'
 const stripeIns = new stripe(process.env.STRIPE_API!)
 
 export async function fetchProducts(req: any, res: Response, next: any) {
-    const page = +req.query.page;
+    const page = +req.query.page
     const isAdmin = req.query.isAdmin
-    const oAuthToken = req.oAuthToken
-    let email;
+    const oAuthToken = req.headers.oauthtoken.split(' ')[1]
+    const authToken = req.headers.authtoken.split(' ')[1]
 
-    if (oAuthToken) {
+    if ((oAuthToken.trim().toLowerCase() !== 'undefined' || authToken.trim().toLowerCase() !== 'null' || isAdmin.toLowerCase().trim() === 'true') && !req.oAuthToken && !req.decodedToken) {
+        return next()
+    }
+
+    let email;
+    if (req.oAuthToken) {
         const queryRes = await prisma.session.findUnique({
             where: {
-                token: oAuthToken
+                token: req.oAuthToken
             },
             select: {
                 user: {
@@ -30,7 +35,6 @@ export async function fetchProducts(req: any, res: Response, next: any) {
     } else {
         email = req.decodedToken?.email
     }
-
     let skip = 0
     if (page > 1) {
         skip = (page - 1) * 8
@@ -42,10 +46,6 @@ export async function fetchProducts(req: any, res: Response, next: any) {
     }
     let query_2: any = ''
 
-    if (isAdmin.toLowerCase().trim() === 'true' && !req.decodedToken && !oAuthToken) {
-        return next()
-    }
-
     if (isAdmin.toLowerCase().trim() === 'true') {
         query = {
             select: {
@@ -53,7 +53,17 @@ export async function fetchProducts(req: any, res: Response, next: any) {
                 title: true,
                 description: true,
                 image_src: true,
-                price: true
+                price: true,
+                wishlist: {
+                    select: {
+                        id: true
+                    },
+                    where: {
+                        user: {
+                            email
+                        }
+                    }
+                }
             },
             skip,
             take: 8,
@@ -73,8 +83,53 @@ export async function fetchProducts(req: any, res: Response, next: any) {
         }
     }
 
-    if (isAdmin.toLowerCase().trim() === 'undefined' && !page) {
+    if (!page && !email) {
         query = ''
+    }
+    if (isAdmin.toLowerCase().trim() === 'undefined' && email && page) {
+        query = {
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                image_src: true,
+                price: true,
+                wishlist: {
+                    select: {
+                        id: true
+                    },
+                    where: {
+                        user: {
+                            email
+                        }
+                    }
+                }
+            },
+            skip,
+            take: 8
+        }
+    }
+
+    if (email && !page) {
+        query = {
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                image_src: true,
+                price: true,
+                wishlist: {
+                    select: {
+                        id: true
+                    },
+                    where: {
+                        user: {
+                            email
+                        }
+                    }
+                }
+            }
+        }
     }
 
     try {

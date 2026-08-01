@@ -396,27 +396,31 @@ export async function getAuthState(req: any, res: Response) {
             jwt.verify(authToken, process.env.JWT_KEY!)
         }
     } catch (err: any) {
-        return res.status(200).json({ msg: 'Please login again!', isLoggedIn: true })
+        return res.status(401).json({ invalidToken: true, msg: 'Please login again!' })
     }
 
-    const queryRes = await prisma.authState.findFirst({
-        where: {
-            token: authToken
-        },
-        select: {
-            user: {
-                select: {
-                    name: true,
-                    email: true
+    try {
+        const queryRes = await prisma.authState.findFirst({
+            where: {
+                token: authToken
+            },
+            select: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true
+                    }
                 }
             }
+        })
+        if (!queryRes) {
+            return res.status(200).json({ isLoggedIn: false })
         }
-    })
-
-    if (!queryRes) {
-        return res.status(200).json({ isLoggedIn: false })
+        return res.status(200).json({ isLoggedIn: true, userData: queryRes?.user })
+    } catch (err: any) {
+        console.log('err in quering authState for getAuthState-', err.message)
+        return res.status(500).json({ msg: 'server error!' })
     }
-    return res.status(200).json({ isLoggedIn: true, userData: queryRes?.user })
 }
 
 

@@ -25,6 +25,6 @@ export function isAuth(req: any, res: any, next: any) {
         req.decodedToken = decodedToken
         next()
     } catch (err) {
-        return res.status(400).json({ msg: 'invalid auth token!' })
+        return res.status(400).json({ msg: 'Please login again!' })
     }
 }
